@@ -1,0 +1,1 @@
+Client stores live here. The backend remains the source of truth for durable state.

@@ -1,0 +1,1 @@
+Foundation UI components live here. Product components are introduced in later implementation phases.

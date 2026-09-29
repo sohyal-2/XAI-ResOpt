@@ -1,0 +1,1 @@
+Feature modules live here. Product features are introduced in later implementation phases.

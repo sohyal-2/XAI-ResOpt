@@ -1,0 +1,9 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^docker compose config --quiet; if \\(\\$LASTEXITCODE -ne 0\\) \\{ exit \\$LASTEXITCODE \\}; python -m pip install -r backend\\\\requirements\\.txt; if \\(\\$LASTEXITCODE -ne 0\\) \\{ exit \\$LASTEXITCODE \\}; python -m compileall -q backend\\\\app backend\\\\tests; if \\(\\$LASTEXITCODE -ne 0\\) \\{ exit \\$LASTEXITCODE \\}; python -m ruff check backend$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "docker compose": true
+    }
+}
