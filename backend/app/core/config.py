@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     # Google Gemini Provider (accepts GEMINI_API_KEY or GOOGLE_API_KEY)
     gemini_api_key: str | None = None
     google_api_key: str | None = None
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"
     gemini_base_url: str = "https://generativelanguage.googleapis.com"
 
     # Local / Ollama Provider

@@ -885,7 +885,10 @@ async def copilot_chat(
     )
 
     try:
-        llm = get_llm_provider()
+        # Use Google Gemini API key for Copilot as preferred provider
+        llm = get_llm_provider("gemini")
+        if not llm.is_available():
+            llm = get_llm_provider()
         if llm.is_available():
             system_prompt = (
                 "You are the XAI-ResOpt Copilot, an explainable and evidence-grounded AI resume assistant. "
