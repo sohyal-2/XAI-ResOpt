@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import re
 from typing import Any
 from uuid import UUID, uuid4
 
 from app.agents.models import AnalysisState
 from app.agents.optimization_models import OptimizerAgentOutput, ProposedChange
+
+logger = logging.getLogger("xai_resopt.optimizer")
 
 
 def _get_attr(item: Any, attr: str, default: Any = None) -> Any:
@@ -19,7 +23,7 @@ def _get_attr(item: Any, attr: str, default: Any = None) -> Any:
 
 
 class OptimizerAgent:
-    """Optimizer Agent that generates grounded resume rewrites using only verified evidence."""
+    """Optimizer Agent that generates grounded resume rewrites using AI (API key) and verified evidence."""
 
     def __init__(self) -> None:
         self.strong_verbs = {
@@ -31,6 +35,192 @@ class OptimizerAgent:
             "managed": "Led engineering for",
             "made": "Developed",
         }
+
+    async def optimize_async(self, state: AnalysisState) -> OptimizerAgentOutput:
+        """Proposes AI-driven, ATS-optimized enhancements using the active LLM provider (API key)."""
+        resume = state.resume_extraction
+        job = state.job_extraction
+        evidence_corpus = state.evidence_corpus or []
+        from app.ai.factory import get_llm_provider
+        provider = get_llm_provider()
+
+        proposed_changes: list[ProposedChange] = []
+        ordering_improvements: list[str] = []
+
+        # 1. Experience Bullet Rewriting (Targeted Bullet Optimization via AI)
+        experience_items = (
+            resume.sections.get("experience", [])
+            if resume and isinstance(resume.sections, dict)
+            else []
+        )
+
+        job_req_keywords: list[str] = []
+        if job and hasattr(job, "requirements"):
+            for req in job.requirements:
+                for term in _get_attr(req, "original_terms", []):
+                    job_req_keywords.append(str(term))
+
+        valid_items = [
+            (item, _get_attr(item, "text", ""), _get_attr(item, "id", None))
+            for item in experience_items
+            if _get_attr(item, "text", "")
+        ]
+
+        if valid_items:
+            bullet_tasks = [
+                self._optimize_bullet_ai(text, job_req_keywords, provider)
+                for _, text, _ in valid_items
+            ]
+            optimized_results = await asyncio.gather(*bullet_tasks, return_exceptions=True)
+
+            for (item, orig_text, item_id), res in zip(valid_items, optimized_results):
+                if isinstance(res, Exception):
+                    improved_text, reason, change_type = self._optimize_bullet(orig_text, job_req_keywords)
+                else:
+                    improved_text, reason, change_type = res
+
+                if improved_text != orig_text:
+                    ev_ids = [item_id] if item_id and isinstance(item_id, UUID) else []
+                    if not ev_ids:
+                        for ev in evidence_corpus:
+                            if _get_attr(ev, "text", "").lower() in orig_text.lower():
+                                ev_ids.append(_get_attr(ev, "id"))
+                                break
+
+                    proposed_changes.append(
+                        ProposedChange(
+                            change_id=uuid4(),
+                            section="experience",
+                            change_type=change_type,
+                            before_text=orig_text,
+                            after_text=improved_text,
+                            reason=reason,
+                            evidence_ids=[e for e in ev_ids if isinstance(e, UUID)],
+                            risk_level="low",
+                            support_status="SUPPORTED",
+                        )
+                    )
+
+        # 2. Professional Summary Optimization via AI
+        summary_change = await self._optimize_summary_ai(resume, job, evidence_corpus, provider)
+        if summary_change:
+            proposed_changes.append(summary_change)
+
+        # 3. Technical Skills Section Optimization
+        skills_change = self._optimize_skills_section(resume, job, evidence_corpus)
+        if skills_change:
+            proposed_changes.append(skills_change)
+
+        # 4. Ordering Improvements
+        if len(experience_items) > 1 and job_req_keywords:
+            ordering_improvements.append(
+                "Place high-impact distributed backend and microservices accomplishments as the first bullet points."
+            )
+
+        grounded_count = sum(len(c.evidence_ids) for c in proposed_changes)
+
+        return OptimizerAgentOutput(
+            status="completed",
+            proposed_changes=proposed_changes,
+            summary_optimization=summary_change,
+            skill_section_optimization=skills_change,
+            ordering_improvements=ordering_improvements,
+            total_changes_proposed=len(proposed_changes),
+            grounded_evidence_count=grounded_count,
+        )
+
+    async def _optimize_summary_ai(
+        self,
+        resume: Any,
+        job: Any,
+        evidence_corpus: list[Any],
+        provider: Any,
+    ) -> ProposedChange | None:
+        """Uses the active LLM provider (API key) to rewrite candidate summary into an ATS capability statement."""
+        if not resume:
+            return None
+
+        orig_summary = _get_attr(resume, "summary", "")
+        if not orig_summary and hasattr(resume, "sections") and "summary" in resume.sections:
+            summary_items = resume.sections.get("summary", [])
+            orig_summary = " ".join(_get_attr(i, "text", "") for i in summary_items)
+
+        target_title = _get_attr(job, "title", "Software Engineer") if job else "Software Engineer"
+        candidate_skills = [_get_attr(ev, "text", "") for ev in evidence_corpus if _get_attr(ev, "type", "") == "skill"]
+        ev_ids = [_get_attr(e, "id") for e in evidence_corpus if _get_attr(e, "id")]
+
+        job_keywords: list[str] = []
+        if job and hasattr(job, "requirements"):
+            for req in job.requirements:
+                for term in _get_attr(req, "original_terms", []):
+                    job_keywords.append(str(term))
+
+        prompt = (
+            f"You are an expert ATS (Applicant Tracking System) resume optimization engineer.\n"
+            f"Rewrite the following candidate resume summary into a high-impact, professional ATS-optimized summary.\n\n"
+            f"Candidate Summary:\n\"\"\"{orig_summary or '[No professional summary present]'}\"\"\"\n\n"
+            f"Target Role: {target_title}\n"
+            f"Candidate Verified Skills: {', '.join(candidate_skills[:8])}\n"
+            f"Target Job Keywords: {', '.join(job_keywords[:6])}\n\n"
+            f"Rules:\n"
+            f"1. Eliminate all passive student/entry-level/internship phrases (e.g. 'pursuing B.Tech', 'student', 'seeking an internship', 'eager to apply').\n"
+            f"2. Transform into an executive 2-3 sentence capability statement highlighting technical stack and problem solving.\n"
+            f"3. Weave in target job keywords naturally without inventing ungrounded metrics.\n"
+            f"4. Output ONLY the rewritten paragraph. No conversational preamble, quotes, or markdown explanations."
+        )
+
+        try:
+            res = await asyncio.wait_for(provider.generate(prompt), timeout=12.0)
+            ai_text = res.content.strip().strip('"').strip("'").strip()
+            ai_text = re.sub(r"^(Here is|Professional Summary:|ATS Summary:)\s*", "", ai_text, flags=re.IGNORECASE).strip()
+
+            if ai_text and ai_text.lower() != (orig_summary or "").strip().lower():
+                return ProposedChange(
+                    change_id=uuid4(),
+                    section="summary",
+                    change_type="summary",
+                    before_text=orig_summary or "[No professional summary present]",
+                    after_text=ai_text,
+                    reason=f"AI-optimized using {getattr(provider, 'provider_name', 'AI LLM')} (API key) for executive authority, ATS keyword density, and role alignment.",
+                    evidence_ids=[e for e in ev_ids[:3] if isinstance(e, UUID)],
+                    risk_level="low",
+                    support_status="SUPPORTED",
+                )
+        except Exception as e:
+            logger.warning("AI summary optimization fell back to deterministic rules: %s", e)
+
+        # Fallback to deterministic rules if AI provider is unreachable or times out
+        return self._optimize_summary(resume, job, evidence_corpus)
+
+    async def _optimize_bullet_ai(
+        self,
+        original_text: str,
+        job_req_keywords: list[str],
+        provider: Any,
+    ) -> tuple[str, str, str]:
+        """Uses the active LLM provider (API key) to rewrite an accomplishment bullet with impact verbs and keywords."""
+        prompt = (
+            f"You are an expert ATS resume optimizer.\n"
+            f"Rewrite this single resume bullet point to maximize ATS keyword alignment, active impact verbs, and clarity, while strictly preserving facts and numbers.\n\n"
+            f"Original Bullet:\n\"{original_text}\"\n\n"
+            f"Target Job Keywords to incorporate if applicable: {', '.join(job_req_keywords[:5])}\n\n"
+            f"Rules:\n"
+            f"1. Begin with a powerful past-tense action verb (e.g., Engineered, Architected, Spearheaded, Implemented, Automated).\n"
+            f"2. Retain all original metrics, technologies, and facts without inventing ungrounded claims.\n"
+            f"3. Output ONLY the rewritten single bullet text. No markdown bullet points, quotation marks, or explanations."
+        )
+
+        try:
+            res = await asyncio.wait_for(provider.generate(prompt), timeout=15.0)
+            ai_bullet = res.content.strip().strip('"').strip("'").lstrip("-*• ").strip()
+            if not ai_bullet.endswith("."):
+                ai_bullet += "."
+            if ai_bullet and ai_bullet.lower() != original_text.strip().lower():
+                return ai_bullet, f"AI-enhanced using {getattr(provider, 'provider_name', 'AI LLM')} (API key) with strong impact verbs and ATS keywords.", "ai_enhanced"
+        except Exception as e:
+            logger.warning("AI bullet optimization fell back to deterministic rules: %s", e)
+
+        return self._optimize_bullet(original_text, job_req_keywords)
 
     def optimize(self, state: AnalysisState) -> OptimizerAgentOutput:
         """Proposes grounded, ATS-optimized enhancements for experience, summary, and skills."""

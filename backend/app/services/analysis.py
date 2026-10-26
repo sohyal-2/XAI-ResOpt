@@ -331,7 +331,7 @@ async def run_baseline_analysis(
     # 8. Optimizer Agent
     async with AgentTelemetryTracker(db, analysis_id, request_id, "optimizer_agent") as tracker:
         tracker.model_calls = 1
-        opt_output = optimizer.optimize(scoring_state)
+        opt_output = await optimizer.optimize_async(scoring_state)
         tracker.output = {
             "proposed_changes_count": len(opt_output.proposed_changes),
             "proposed_changes": [c.model_dump(mode="json") for c in opt_output.proposed_changes],

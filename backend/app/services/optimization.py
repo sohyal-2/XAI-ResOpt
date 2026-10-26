@@ -231,7 +231,7 @@ async def run_closed_loop_optimization(
         async with AgentTelemetryTracker(db, analysis_id, analysis.request_id, "optimizer_agent") as tracker:
             tracker.model_calls = 1
             opt_start = time.perf_counter()
-            opt_output = optimizer.optimize(transient_state)
+            opt_output = await optimizer.optimize_async(transient_state)
             opt_dur = int((time.perf_counter() - opt_start) * 1000)
             tracker.output = {"proposed_count": len(opt_output.proposed_changes)}
             iter_agent_runs.append({"agent": "optimizer_agent", "status": "completed", "duration_ms": opt_dur})
