@@ -119,7 +119,14 @@ function DashboardContent() {
             </Link>
             <nav aria-label="Main navigation" className="hidden items-center gap-5 text-xs font-medium text-[#5c5953] md:flex">
               <Link href="/dashboard" className="text-[#181816] font-semibold py-2">Dashboard</Link>
-              <Link href="/analysis/new" className="hover:text-[#181816] transition-colors py-2">New Analysis</Link>
+              <Link
+                href="/ats-checker"
+                className="hover:text-[#181816] font-medium flex items-center gap-1.5 text-[#181816] bg-[#f7f5ef] px-2.5 py-1 rounded border border-[#ded9cc] transition-colors"
+              >
+                <Sparkles className="h-3 w-3 text-[#8c6218]" />
+                ATS Checker
+              </Link>
+              <Link href="/analysis/new" className="hover:text-[#181816] transition-colors py-2">Job Match Analysis</Link>
               <Link href="/evidence" className="hover:text-[#181816] transition-colors py-2">Evidence</Link>
               <Link href="/settings" className="hover:text-[#181816] transition-colors py-2">Settings</Link>
             </nav>
@@ -129,6 +136,13 @@ function DashboardContent() {
             <span className="hidden text-xs text-[#5c5953] lg:inline font-mono">
               {user?.full_name || user?.email}
             </span>
+            <Link
+              href="/ats-checker"
+              className="flex items-center gap-1.5 rounded border border-[#ded9cc] bg-[#f7f5ef] px-3 py-2 text-xs font-medium text-[#181816] hover:bg-[#eae6dd] transition-colors shadow-xs min-h-[40px]"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-[#8c6218]" />
+              <span className="hidden sm:inline">ATS Checker</span>
+            </Link>
             <Link
               href="/analysis/new"
               className="flex items-center gap-1.5 rounded bg-[#181816] px-3.5 py-2 text-xs font-medium text-[#fcfbf7] hover:bg-[#2b2926] transition-colors shadow-sm min-h-[40px]"
@@ -205,11 +219,19 @@ function DashboardContent() {
                 Dashboard
               </Link>
               <Link
+                href="/ats-checker"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded px-3 py-2.5 text-sm font-semibold text-[#181816] bg-[#f7f5ef] min-h-[44px] flex items-center gap-2"
+              >
+                <Sparkles className="h-4 w-4 text-[#8c6218]" />
+                ATS Checker
+              </Link>
+              <Link
                 href="/analysis/new"
                 onClick={() => setMobileMenuOpen(false)}
                 className="rounded px-3 py-2.5 text-sm font-medium text-[#181816] hover:bg-[#f7f5ef] min-h-[44px] flex items-center"
               >
-                New Analysis
+                Job Match Analysis
               </Link>
               <Link
                 href="/evidence"
@@ -256,22 +278,22 @@ function DashboardContent() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="rounded bg-[#181816] px-2 py-0.5 text-[10px] font-mono font-medium text-[#fcfbf7] uppercase tracking-wider">
-                Enhancv-Style Audit
+                Dedicated Page
               </span>
               <h2 className="text-base font-serif font-medium text-[#181816]">
-                Instant ATS Resume Compatibility Check
+                Instant ATS Resume Compatibility Checker
               </h2>
             </div>
             <p className="text-xs text-[#5c5953] max-w-xl">
-              Upload your PDF or DOCX resume to test multi-column layout risks, passive voice, missing keywords, and section structure across 5 grounded ATS pillars — no job description required.
+              Upload your PDF or DOCX resume to test multi-column layout risks, passive voice, missing keywords, and section structure across 5 grounded ATS pillars — completely standalone.
             </p>
           </div>
           <Link
-            href="/analysis/new"
+            href="/ats-checker"
             className="inline-flex items-center gap-2 rounded bg-[#181816] px-4 py-2.5 text-xs font-medium text-[#fcfbf7] hover:bg-[#2b2926] transition-colors shrink-0 shadow-sm min-h-[40px]"
           >
             <Sparkles className="h-3.5 w-3.5 text-[#e6e2d8]" />
-            Run Instant ATS Check
+            Open ATS Checker Page
             <ArrowRight className="h-3 w-3" />
           </Link>
         </div>

@@ -15,6 +15,7 @@ import {
   Lock,
   Menu,
   X,
+  Sparkles,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -55,14 +56,27 @@ export default function LandingPage() {
               aria-label="Desktop primary navigation"
               className="hidden items-center gap-6 text-xs font-medium uppercase tracking-wider text-[#5c5953] md:flex"
             >
+              <Link
+                href="/ats-checker"
+                className="text-[#181816] font-semibold flex items-center gap-1.5 py-1 px-2.5 rounded bg-[#f7f5ef] border border-[#ded9cc]"
+              >
+                <Sparkles className="h-3 w-3 text-[#8c6218]" />
+                ATS Checker
+              </Link>
               <a href="#philosophy" className="hover:text-[#181816] transition-colors py-2">Philosophy</a>
               <a href="#pipeline" className="hover:text-[#181816] transition-colors py-2">Architecture</a>
               <a href="#evidence" className="hover:text-[#181816] transition-colors py-2">Evidence Graph</a>
-              <a href="#ats-safety" className="hover:text-[#181816] transition-colors py-2">ATS Verification</a>
             </nav>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/ats-checker"
+              className="inline-flex items-center justify-center gap-1.5 rounded border border-[#ded9cc] bg-[#f7f5ef] px-3.5 py-2 text-xs font-medium text-[#181816] hover:bg-[#eae6dd] transition-colors min-h-[40px]"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-[#8c6218]" />
+              <span className="hidden sm:inline">ATS Checker</span>
+            </Link>
             <Link
               href="/login"
               className="hidden sm:inline-flex items-center justify-center rounded border border-[#ded9cc] bg-[#f7f5ef] px-4 py-2 text-xs font-medium text-[#181816] hover:bg-[#eae6dd] transition-colors min-h-[40px]"
@@ -73,7 +87,7 @@ export default function LandingPage() {
               href="/analysis/new"
               className="inline-flex items-center justify-center gap-1.5 rounded bg-[#181816] px-3.5 py-2 sm:px-4 sm:py-2 text-xs font-medium text-[#fcfbf7] hover:bg-[#2b2926] transition-colors min-h-[40px] shadow-sm"
             >
-              <span>Start Analysis</span>
+              <span>Job Match</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
 
@@ -128,6 +142,14 @@ export default function LandingPage() {
             </div>
 
             <nav className="mt-6 flex flex-col space-y-3" aria-label="Mobile primary navigation">
+              <Link
+                href="/ats-checker"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded px-3 py-2.5 text-sm font-semibold text-[#181816] bg-[#f7f5ef] min-h-[44px] flex items-center gap-2"
+              >
+                <Sparkles className="h-4 w-4 text-[#8c6218]" />
+                ATS Resume Checker
+              </Link>
               <a
                 href="#philosophy"
                 onClick={() => setMobileMenuOpen(false)}
@@ -149,13 +171,6 @@ export default function LandingPage() {
               >
                 Evidence Graph
               </a>
-              <a
-                href="#ats-safety"
-                onClick={() => setMobileMenuOpen(false)}
-                className="rounded px-3 py-2.5 text-sm font-medium text-[#181816] hover:bg-[#f7f5ef] transition-colors min-h-[44px] flex items-center"
-              >
-                ATS Verification
-              </a>
             </nav>
 
             <div className="mt-auto border-t border-[#edeae1] pt-6 space-y-3">
@@ -167,12 +182,12 @@ export default function LandingPage() {
                 Sign In
               </Link>
               <Link
-                href="/analysis/new"
+                href="/ats-checker"
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex w-full items-center justify-center gap-2 rounded bg-[#181816] px-4 py-3 text-sm font-medium text-[#fcfbf7] hover:bg-[#2b2926] min-h-[44px]"
               >
-                Launch Analysis
-                <ArrowRight className="h-4 w-4" />
+                <Sparkles className="h-4 w-4" />
+                ATS Resume Checker
               </Link>
             </div>
           </div>
@@ -199,11 +214,18 @@ export default function LandingPage() {
 
         <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4">
           <Link
-            href="/analysis/new"
-            className="flex w-full sm:w-auto items-center justify-center gap-2 rounded bg-[#181816] px-6 py-3.5 text-sm font-medium text-[#fcfbf7] hover:bg-[#2b2926] transition-all shadow-sm min-h-[44px]"
+            href="/ats-checker"
+            className="flex w-full sm:w-auto items-center justify-center gap-2 rounded bg-[#181816] px-6 py-3.5 text-sm font-medium text-[#fcfbf7] hover:bg-[#2b2926] transition-all shadow-editorial min-h-[44px]"
           >
-            Launch New Analysis
+            <Sparkles className="h-4 w-4 text-[#e6e2d8]" />
+            Instant ATS Resume Checker
             <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            href="/analysis/new"
+            className="flex w-full sm:w-auto items-center justify-center rounded border border-[#ded9cc] bg-[#f7f5ef] px-6 py-3.5 text-sm font-medium text-[#181816] hover:bg-[#eae6dd] transition-colors min-h-[44px]"
+          >
+            Job Match Analysis
           </Link>
           <Link
             href="/dashboard"

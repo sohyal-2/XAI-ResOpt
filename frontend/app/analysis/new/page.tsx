@@ -24,6 +24,7 @@ import {
   Cpu,
   Layers,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 
 function formatFileSize(bytes: number): string {
@@ -220,17 +221,37 @@ function NewAnalysisContent() {
       {/* Top Header */}
       <header className="border-b border-[#e6e2d8] bg-[#fcfbf7]">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 sm:px-6 py-4">
-          <Link href="/dashboard" className="flex items-center gap-2 text-xs font-medium text-[#5c5953] hover:text-[#181816] transition-colors min-h-[44px] sm:min-h-0">
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Dashboard
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard" className="flex items-center gap-2 text-xs font-medium text-[#5c5953] hover:text-[#181816] transition-colors min-h-[44px] sm:min-h-0">
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Dashboard
+            </Link>
+            <span className="text-[#ded9cc]">•</span>
+            <Link href="/ats-checker" className="text-xs font-medium text-[#181816] hover:underline flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-[#8c6218]" />
+              ATS Checker
+            </Link>
+          </div>
           <span className="font-mono text-xs text-[#5c5953] uppercase tracking-wider">
-            Step {currentStep} of 4
+            Job Match Workflow (Step {currentStep} of 4)
           </span>
         </div>
       </header>
 
       <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
+        {/* Notice banner pointing to dedicated ATS Checker */}
+        <div className="mb-6 rounded border border-[#ded9cc] bg-[#f7f5ef] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-[#181816]">
+            <Sparkles className="h-4 w-4 text-[#8c6218] shrink-0" />
+            <span>Only looking to audit your resume for ATS mistakes without a job description?</span>
+          </div>
+          <Link
+            href="/ats-checker"
+            className="font-medium text-[#181816] hover:underline shrink-0 flex items-center gap-1 font-mono text-[11px]"
+          >
+            Open Standalone ATS Checker <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
         {/* Step Indicator */}
         <div className="mb-8 sm:mb-10 grid grid-cols-4 gap-1.5 sm:gap-2 text-center text-xs font-medium">
           {[

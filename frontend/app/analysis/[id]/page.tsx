@@ -161,6 +161,15 @@ export default function AnalysisWorkspacePage() {
                 <ArrowLeft className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Dashboard</span>
               </Link>
+              <span className="text-[#ded9cc]">•</span>
+              <Link
+                href="/ats-checker"
+                className="text-xs font-medium text-[#181816] hover:underline flex items-center gap-1 shrink-0"
+                title="Open standalone ATS Checker"
+              >
+                <Sparkles className="h-3 w-3 text-[#8c6218]" />
+                <span className="hidden md:inline">ATS Checker</span>
+              </Link>
               <span className="text-[#ded9cc]">/</span>
               <div className="min-w-0">
                 <h1 className="text-xs font-semibold text-[#181816] truncate max-w-[160px] sm:max-w-xs md:max-w-md">

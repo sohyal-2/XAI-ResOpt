@@ -14,6 +14,7 @@ import {
   ExternalLink,
   CheckCircle2,
   AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 
 function EvidenceExplorerContent() {
@@ -63,6 +64,14 @@ function EvidenceExplorerContent() {
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Dashboard
+            </Link>
+            <span className="text-[#ded9cc]">•</span>
+            <Link
+              href="/ats-checker"
+              className="text-xs font-medium text-[#181816] hover:underline flex items-center gap-1"
+            >
+              <Sparkles className="h-3 w-3 text-[#8c6218]" />
+              ATS Checker
             </Link>
             <span className="text-[#ded9cc]">/</span>
             <span className="font-serif text-sm font-normal text-[#181816]">
