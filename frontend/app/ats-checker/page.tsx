@@ -40,7 +40,7 @@ function formatFileSize(bytes: number): string {
 function AtsCheckerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -136,18 +136,30 @@ function AtsCheckerContent() {
       }
 
       // 1. Ingest Resume
-      const res = await ingestResume(fileToUpload);
+      const res = await ingestResume(fileToUpload, token);
 
       // 2. Trigger Standalone Baseline ATS Analysis (No Job Description)
-      const baselineReport = await triggerBaselineAnalysis({
-        resume_id: res.id,
-      });
+      const baselineReport = await triggerBaselineAnalysis(
+        {
+          resume_id: res.id,
+        },
+        token
+      );
 
       clearInterval(interval);
       setReport(baselineReport);
       setCurrentAnalysisId(baselineReport.analysis_id);
     } catch (err: any) {
-      setError(err.message || "Failed to run ATS resume check.");
+      const errMsg = err.message || "Failed to run ATS resume check.";
+      if (
+        errMsg.toLowerCase().includes("session") ||
+        errMsg.toLowerCase().includes("unauthorized") ||
+        errMsg.toLowerCase().includes("authentication")
+      ) {
+        setError("Your session has expired. Please sign in again to analyze your resume.");
+      } else {
+        setError(errMsg);
+      }
     } finally {
       setIsScanning(false);
     }
@@ -311,12 +323,22 @@ function AtsCheckerContent() {
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
-            <button
-              onClick={() => setError(null)}
-              className="text-xs font-semibold underline px-2 py-1 min-h-[32px]"
-            >
-              Dismiss
-            </button>
+            <div className="flex items-center gap-2">
+              {error.toLowerCase().includes("session") && (
+                <Link
+                  href="/login"
+                  className="rounded bg-[#942e23] px-3 py-1.5 text-xs font-medium text-[#ffffff] hover:bg-[#78231a] transition-colors"
+                >
+                  Sign In Again
+                </Link>
+              )}
+              <button
+                onClick={() => setError(null)}
+                className="text-xs font-semibold underline px-2 py-1 min-h-[32px]"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 

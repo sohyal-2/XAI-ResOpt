@@ -32,11 +32,23 @@ export interface HealthResponse {
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export function getActiveToken(token?: string | null): string | null {
+  if (token) return token;
+  if (typeof window === "undefined") return null;
+  return (
+    sessionStorage.getItem("xai-resopt.access-token") ||
+    localStorage.getItem("access_token") ||
+    localStorage.getItem("xai-resopt.access-token") ||
+    localStorage.getItem("token") ||
+    null
+  );
+}
+
 function getHeaders(token?: string | null): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  const activeToken = token || (typeof window !== "undefined" ? sessionStorage.getItem("xai-resopt.access-token") || localStorage.getItem("access_token") : null);
+  const activeToken = getActiveToken(token);
   if (activeToken) {
     headers["Authorization"] = `Bearer ${activeToken}`;
   }
@@ -120,7 +132,7 @@ export async function ingestResume(file: File, token?: string | null): Promise<I
   const formData = new FormData();
   formData.append("file", file);
 
-  const activeToken = token || (typeof window !== "undefined" ? sessionStorage.getItem("xai-resopt.access-token") : null);
+  const activeToken = getActiveToken(token);
   const response = await fetch(`${apiUrl}/api/ingestion/resumes`, {
     method: "POST",
     headers: activeToken ? { Authorization: `Bearer ${activeToken}` } : {},
@@ -139,7 +151,7 @@ export async function ingestJobDescription(
   if (data.url) formData.append("url", data.url);
   if (data.file) formData.append("file", data.file);
 
-  const activeToken = token || (typeof window !== "undefined" ? sessionStorage.getItem("xai-resopt.access-token") : null);
+  const activeToken = getActiveToken(token);
   const response = await fetch(`${apiUrl}/api/ingestion/job-descriptions`, {
     method: "POST",
     headers: activeToken ? { Authorization: `Bearer ${activeToken}` } : {},
@@ -157,7 +169,7 @@ export async function ingestExternalSource(
   formData.append("url", url);
   formData.append("source_type", sourceType);
 
-  const activeToken = token || (typeof window !== "undefined" ? sessionStorage.getItem("xai-resopt.access-token") : null);
+  const activeToken = getActiveToken(token);
   const response = await fetch(`${apiUrl}/api/ingestion/external`, {
     method: "POST",
     headers: activeToken ? { Authorization: `Bearer ${activeToken}` } : {},
@@ -399,10 +411,7 @@ export async function previewResumeVersion(
   return parseResponse<DeterministicResumeDocument>(response);
 }
 
-export function getActiveToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem("xai-resopt.access-token") || localStorage.getItem("access_token");
-}
+
 
 export function getResumePdfExportUrl(
   versionId: string,

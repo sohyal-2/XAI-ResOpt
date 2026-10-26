@@ -27,11 +27,13 @@ async def get_current_user(
         payload = jwt.decode(raw_token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         user_id = payload.get("sub")
         jti = payload.get("jti")
-        if not user_id or not jti or await redis.exists(f"auth:revoked:{jti}") or not await redis.exists(f"auth:session:{jti}"):
+        if not user_id or not jti or await redis.exists(f"auth:revoked:{jti}"):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired session.")
     except jwt.PyJWTError as error:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired session.") from error
     user = await db.scalar(select(User).where(User.id == user_id, User.is_active.is_(True)))
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired session.")
+    if not await redis.exists(f"auth:session:{jti}"):
+        await redis.set(f"auth:session:{jti}", str(user_id), ex=settings.access_token_minutes * 60)
     return user
