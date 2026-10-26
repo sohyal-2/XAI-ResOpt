@@ -377,6 +377,10 @@ async def finalize_review(
         is_final=True,
     )
     db.add(new_version)
+    await db.flush()
+
+    # Update Analysis to point to the finalized resume version
+    analysis.resume_version_id = new_version_id
 
     # Record Approval History
     approval = ApprovalHistory(

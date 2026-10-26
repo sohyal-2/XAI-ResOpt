@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import type { BaselineReportResponse, ClosedLoopOptimizationResponse, ProposedChangeItem } from "@/types/api";
-import { fetchLatestOptimization } from "@/lib/api";
+import { fetchLatestOptimization, triggerOptimization, downloadResumePdf, downloadResumeDocx } from "@/lib/api";
+import { useAuth } from "@/features/auth/auth-provider";
 import {
   ArrowRight,
   TrendingUp,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   AlertCircle,
   FileText,
+  FileDown,
   SlidersHorizontal,
 } from "lucide-react";
 
@@ -27,24 +29,71 @@ export const ComparisonTab: React.FC<ComparisonTabProps> = ({
   baselineReport,
   onNavigateTab,
 }) => {
+  const { token } = useAuth();
   const [latestOpt, setLatestOpt] = useState<ClosedLoopOptimizationResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingDocx, setDownloadingDocx] = useState(false);
+  const [downloadMsg, setDownloadMsg] = useState<string | null>(null);
+
+  const loadLatest = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchLatestOptimization(analysisId, token);
+      setLatestOpt(data);
+    } catch {
+      setLatestOpt(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadLatest() {
-      try {
-        setLoading(true);
-        const data = await fetchLatestOptimization(analysisId);
-        setLatestOpt(data);
-      } catch {
-        // No optimization runs completed yet for this analysis
-        setLatestOpt(null);
-      } finally {
-        setLoading(false);
-      }
-    }
     if (analysisId) loadLatest();
   }, [analysisId]);
+
+  const handleRunOptimization = async () => {
+    try {
+      setIsOptimizing(true);
+      const res = await triggerOptimization(analysisId, token);
+      setLatestOpt(res);
+      setDownloadMsg(`Optimization complete! Score boosted to ${res.final_score.toFixed(1)}%`);
+      setTimeout(() => setDownloadMsg(null), 5000);
+    } catch (err: any) {
+      alert(err.message || "Optimization run failed");
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    const versionId = latestOpt?.optimized_version_id || baselineReport.resume_version_id;
+    if (!versionId || downloadingPdf) return;
+    try {
+      setDownloadingPdf(true);
+      setDownloadMsg(null);
+      await downloadResumePdf(versionId, "Optimized_Resume_ATS.pdf", "Helvetica", 0.6, token);
+    } catch (err: any) {
+      setDownloadMsg(`PDF Export issue: ${err.message}`);
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
+  const handleDownloadDocx = async () => {
+    const versionId = latestOpt?.optimized_version_id || baselineReport.resume_version_id;
+    if (!versionId || downloadingDocx) return;
+    try {
+      setDownloadingDocx(true);
+      setDownloadMsg(null);
+      await downloadResumeDocx(versionId, "Optimized_Resume_ATS.docx", "Helvetica", 0.6, token);
+    } catch (err: any) {
+      setDownloadMsg(`DOCX Export issue: ${err.message}`);
+    } finally {
+      setDownloadingDocx(false);
+    }
+  };
 
   const baselineScore = baselineReport.overall_score;
 
@@ -117,6 +166,23 @@ export const ComparisonTab: React.FC<ComparisonTabProps> = ({
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <button
+                    onClick={handleRunOptimization}
+                    disabled={isOptimizing}
+                    className="inline-flex items-center gap-2 rounded bg-[#1f6339] px-4 py-2 text-xs font-semibold text-[#ffffff] hover:bg-[#184e2d] transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1f6339] min-h-[44px] shadow-sm disabled:opacity-50"
+                  >
+                    {isOptimizing ? (
+                      <>
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        Optimizing Resume (Target 85–95%)...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Run Closed-Loop Optimizer (Target 85–95%)
+                      </>
+                    )}
+                  </button>
+                  <button
                     onClick={() => onNavigateTab("rewrite")}
                     className="inline-flex items-center gap-2 rounded bg-[#181816] px-4 py-2 text-xs font-semibold text-[#fcfbf7] hover:bg-[#2b2926] transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#181816] min-h-[44px]"
                   >
@@ -130,6 +196,11 @@ export const ComparisonTab: React.FC<ComparisonTabProps> = ({
                     Inspect ATS Invariants
                   </button>
                 </div>
+                {downloadMsg && (
+                  <div className="mt-3 rounded border border-[#cde4d3] bg-[#f0f7f2] p-2 text-xs text-[#1f6339] font-medium">
+                    {downloadMsg}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -248,6 +319,42 @@ export const ComparisonTab: React.FC<ComparisonTabProps> = ({
             </p>
             <p className="mt-1 text-[11px] text-[#5c5953]">Verified by Critic &amp; Fact-Checker agents</p>
           </div>
+        </div>
+
+        {/* Action Controls: Download PDF / DOCX & Re-Optimize */}
+        <div className="mt-5 pt-4 border-t border-[#edeae1] flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              className="inline-flex items-center gap-2 rounded bg-[#1f6339] px-4 py-2 text-xs font-semibold text-[#ffffff] hover:bg-[#184e2d] transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#1f6339] min-h-[40px] shadow-sm disabled:opacity-50"
+            >
+              <FileDown className="h-4 w-4" />
+              {downloadingPdf ? "Generating ATS PDF..." : "Download Optimized PDF"}
+            </button>
+            <button
+              onClick={handleDownloadDocx}
+              disabled={downloadingDocx}
+              className="inline-flex items-center gap-2 rounded border border-[#181816] bg-[#181816] px-4 py-2 text-xs font-semibold text-[#fcfbf7] hover:bg-[#2b2926] transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#181816] min-h-[40px] shadow-sm disabled:opacity-50"
+            >
+              <FileText className="h-4 w-4" />
+              {downloadingDocx ? "Generating DOCX..." : "Download Word (DOCX)"}
+            </button>
+            <button
+              onClick={handleRunOptimization}
+              disabled={isOptimizing}
+              className="inline-flex items-center gap-1.5 rounded border border-[#ded9cc] bg-[#ffffff] px-3 py-2 text-xs font-medium text-[#181816] hover:bg-[#f5f2e9] transition-colors min-h-[40px] disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isOptimizing ? "animate-spin" : ""}`} />
+              {isOptimizing ? "Optimizing..." : "Re-Run Optimization"}
+            </button>
+          </div>
+
+          {downloadMsg && (
+            <p className="text-xs font-mono font-medium text-[#1f6339] bg-[#f0f7f2] border border-[#cde4d3] px-3 py-1.5 rounded">
+              {downloadMsg}
+            </p>
+          )}
         </div>
       </div>
 

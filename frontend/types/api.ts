@@ -34,9 +34,14 @@ export interface ScorePenaltyDetail {
 }
 
 export interface ScoreReason {
-  category: string;
-  explanation: string;
+  factor_name?: string;
+  category?: string;
   impact: string;
+  description?: string;
+  explanation?: string;
+  recommendation?: string | null;
+  requirement_id?: string | null;
+  evidence_id?: string | null;
 }
 
 export interface RecommendationDetail {

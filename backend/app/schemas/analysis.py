@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.scoring.models import (
     CategoryScoreDetail,
@@ -161,10 +161,20 @@ class AnalysisSummaryItem(BaseModel):
 class CopilotCitation(BaseModel):
     """Provenance citation linking copilot assertions to verifiable evidence."""
     id: str | None = None
-    text: str
-    source: str
+    text: str = ""
+    source: str = ""
     confidence: float = 0.95
     support_status: str = "known"  # known, inferred, unknown, unsupported
+
+    @model_validator(mode="before")
+    @classmethod
+    def handle_legacy_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "quote" in data and not data.get("text"):
+                data["text"] = data["quote"]
+            if "relevance" in data and "confidence" not in data:
+                data["confidence"] = data["relevance"]
+        return data
 
 
 class CopilotChatRequest(BaseModel):
@@ -174,8 +184,18 @@ class CopilotChatRequest(BaseModel):
 
 class CopilotChatResponse(BaseModel):
     """Context-grounded assistant reply with provenance labels and citations."""
-    response: str
+    response: str = ""
     citations: list[CopilotCitation] = Field(default_factory=list)
     support_label: str = "Known from evidence"  # Known from evidence, Inferred, Unknown, Unsupported
     suggested_actions: list[str] = Field(default_factory=list)
+    analysis_id: UUID | None = None
+    user_query: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def handle_legacy_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "answer" in data and not data.get("response"):
+                data["response"] = data["answer"]
+        return data
 
