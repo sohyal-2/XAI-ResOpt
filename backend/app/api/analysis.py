@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, status
+from fastapi import APIRouter, Body, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user
@@ -29,6 +29,7 @@ from app.schemas.optimization import (
 )
 from app.services.analysis import (
     copilot_chat,
+    delete_user_analysis,
     get_agent_runs,
     get_analysis_summary,
     get_baseline_report,
@@ -65,6 +66,18 @@ async def retrieve_analysis_summary(
 ) -> AnalysisSummaryItem:
     """Retrieves metadata summary for an analysis."""
     return await get_analysis_summary(db, current_user.id, analysis_id)
+
+
+@router.delete("/{analysis_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def remove_analysis(
+    analysis_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """Deletes an analysis record and associated runs for the user."""
+    await delete_user_analysis(db, current_user.id, analysis_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 
 
 @router.post("/{analysis_id}/chat", response_model=CopilotChatResponse)

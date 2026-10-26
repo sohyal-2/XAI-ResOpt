@@ -7,7 +7,7 @@ from app.core.rate_limit import RateLimiter
 from app.core.security import get_current_user
 from app.db import get_db
 from app.models import EvidenceItem, User
-from app.parsing.documents import extract_document_text
+from app.parsing.documents import extract_document_text, extract_document_text_with_diagnostics
 from app.parsing.job_description import parse_job_description
 from app.parsing.resume import parse_resume
 from app.parsing.url_safety import UnsafeUrlError, fetch_public_url
@@ -26,7 +26,8 @@ external_limiter = RateLimiter(times=20, seconds=60, key_prefix="ingest:external
 async def ingest_resume(file: UploadFile = File(...), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)) -> IngestionResponse:
     try:
         upload = validate_upload(file.filename or "", file.content_type, await file.read(), get_settings().max_upload_size_bytes)
-        extraction = parse_resume(extract_document_text(upload), upload.filename)
+        raw_text, diag = extract_document_text_with_diagnostics(upload)
+        extraction = parse_resume(raw_text, upload.filename, diagnostics=diag)
         resume = await store_resume(db, current_user.id, extraction)
         return IngestionResponse(id=resume.id, source=extraction.source, item_count=len(extraction.items), items=extraction.items)
     except IngestionError as error:

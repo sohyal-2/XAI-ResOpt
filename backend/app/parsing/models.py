@@ -50,6 +50,17 @@ class ContactInformation(BaseModel):
     links: list[str] = Field(default_factory=list)
 
 
+class ResumeLayoutDiagnostics(BaseModel):
+    is_scanned: bool = False
+    has_tables: bool = False
+    table_count: int = 0
+    has_text_boxes: bool = False
+    has_multi_column: bool = False
+    page_count: int = 1
+    non_standard_char_count: int = 0
+    formatting_warnings: list[str] = Field(default_factory=list)
+
+
 class ResumeExtraction(BaseModel):
     source: str
     name: str | None = None
@@ -58,6 +69,7 @@ class ResumeExtraction(BaseModel):
     sections: dict[str, list[ExtractedItem]] = Field(default_factory=dict)
     items: list[ExtractedItem] = Field(default_factory=list)
     raw_text: str = Field(min_length=1)
+    layout_diagnostics: ResumeLayoutDiagnostics = Field(default_factory=ResumeLayoutDiagnostics)
 
 
 class JobRequirementExtraction(BaseModel):

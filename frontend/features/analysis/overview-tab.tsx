@@ -160,6 +160,29 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ report, onNavigateTab 
         </div>
       </div>
 
+      {/* Quick Link to ATS Audit */}
+      <div className="rounded border border-[#edeae1] bg-[#fcfbf7] p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-3">
+          <ShieldCheck className="h-5 w-5 text-[#1f6339] shrink-0" />
+          <div>
+            <p className="font-semibold text-[#181816]">
+              Full ATS Compatibility & Invariants Audit
+            </p>
+            <p className="text-[#5c5953] mt-0.5">
+              Inspect the 5 core pillars: Readability, Structure, Content Quality, Contact Coordinates, and Skills.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onNavigateTab("ats")}
+          className="rounded bg-[#181816] px-4 py-2 font-semibold text-[#fcfbf7] hover:bg-[#2b2926] transition-colors flex items-center gap-1.5 min-h-[36px]"
+        >
+          <span>View ATS Audit</span>
+          <ArrowRight className="h-3 w-3" />
+        </button>
+      </div>
+
       {/* Priority Grounded Recommendations */}
       <div className="rounded border border-[#e6e2d8] bg-[#ffffff] p-5 sm:p-6 shadow-editorial">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edeae1] pb-3 mb-4">

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/features/auth/protected-route";
 import { useAuth } from "@/features/auth/auth-provider";
-import { fetchAnalyses, fetchResumes } from "@/lib/api";
+import { fetchAnalyses, fetchResumes, deleteAnalysis } from "@/lib/api";
 import type { AnalysisSummaryItem, ResumeSummaryItem } from "@/types/api";
 import {
   ArrowRight,
@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Menu,
   X,
+  Trash2,
 } from "lucide-react";
 
 function DashboardContent() {
@@ -32,6 +33,25 @@ function DashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDeleteAnalysis = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to permanently delete this resume analysis session?")) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      await deleteAnalysis(id, token);
+      setAnalyses((prev) => prev.filter((a) => a.id !== id));
+    } catch (err: any) {
+      alert(err.message || "Failed to delete analysis");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   // Close drawer on Escape and lock scroll
   useEffect(() => {
@@ -231,6 +251,31 @@ function DashboardContent() {
           </p>
         </div>
 
+        {/* Instant ATS Checker Quick Banner */}
+        <div className="rounded border border-[#ded9cc] bg-[#f7f5ef] p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="rounded bg-[#181816] px-2 py-0.5 text-[10px] font-mono font-medium text-[#fcfbf7] uppercase tracking-wider">
+                Enhancv-Style Audit
+              </span>
+              <h2 className="text-base font-serif font-medium text-[#181816]">
+                Instant ATS Resume Compatibility Check
+              </h2>
+            </div>
+            <p className="text-xs text-[#5c5953] max-w-xl">
+              Upload your PDF or DOCX resume to test multi-column layout risks, passive voice, missing keywords, and section structure across 5 grounded ATS pillars — no job description required.
+            </p>
+          </div>
+          <Link
+            href="/analysis/new"
+            className="inline-flex items-center gap-2 rounded bg-[#181816] px-4 py-2.5 text-xs font-medium text-[#fcfbf7] hover:bg-[#2b2926] transition-colors shrink-0 shadow-sm min-h-[40px]"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-[#e6e2d8]" />
+            Run Instant ATS Check
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
         {/* Executive Stats Cards */}
         <section aria-label="Executive Overview">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -379,9 +424,21 @@ function DashboardContent() {
                         </span>
                         <span className="font-mono">ID: {item.id.slice(0, 8)}...</span>
                       </div>
-                      <span className="text-xs font-medium text-[#181816] group-hover:underline flex items-center gap-1 min-h-[32px]">
-                        Open Workspace <ArrowRight className="h-3 w-3" />
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteAnalysis(e, item.id)}
+                          disabled={deletingId === item.id}
+                          className="text-[#942e23] hover:text-[#78231a] hover:bg-[#fdf2f0] rounded px-2 py-1 text-[11px] font-medium flex items-center gap-1 transition-colors min-h-[32px]"
+                          title="Delete this analysis"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          <span>{deletingId === item.id ? "Deleting..." : "Delete"}</span>
+                        </button>
+                        <span className="text-xs font-medium text-[#181816] group-hover:underline flex items-center gap-1 min-h-[32px]">
+                          Open Workspace <ArrowRight className="h-3 w-3" />
+                        </span>
+                      </div>
                     </div>
                   </Link>
                 ))}

@@ -26,6 +26,12 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
 function NewAnalysisContent() {
   const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -33,6 +39,7 @@ function NewAnalysisContent() {
 
   // Step tracking: 1: Resume, 2: Job Description, 3: External Sources (Optional), 4: Launching / Processing
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Resume state
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -57,7 +64,54 @@ function NewAnalysisContent() {
   const [pipelineProgress, setPipelineProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Handle Resume Submission
+  // Standalone Instant ATS Resume Check (Enhancv-style without requiring JD)
+  const handleRunInstantAtsCheck = async () => {
+    setError(null);
+    if (!resumeFile && !resumePastedText.trim()) {
+      setError("Please upload a resume file (PDF or DOCX) or paste resume text.");
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      setCurrentStep(4);
+      setPipelineStep("Validating document format and extracting digital text layer...");
+      setPipelineProgress(20);
+
+      let fileToUpload = resumeFile;
+      if (!fileToUpload && resumePastedText.trim()) {
+        const blob = new Blob([resumePastedText], { type: "text/plain" });
+        fileToUpload = new File([blob], "resume.txt", { type: "text/plain" });
+      }
+
+      let resId = resumeIngestedId;
+      if (!resId && fileToUpload) {
+        const res = await ingestResume(fileToUpload);
+        resId = res.id;
+        setResumeIngestedId(res.id);
+      }
+
+      setPipelineStep("Auditing ATS readability, section structure, action verbs, and metrics...");
+      setPipelineProgress(55);
+
+      const baselineReport = await triggerBaselineAnalysis({
+        resume_id: resId!,
+      });
+
+      setPipelineStep("Deterministic ATS score synthesized. Opening Analysis Dashboard...");
+      setPipelineProgress(100);
+
+      setTimeout(() => {
+        router.push(`/analysis/${baselineReport.analysis_id}`);
+      }, 600);
+    } catch (err: any) {
+      setError(err.message || "Failed to execute ATS Resume Check.");
+      setIsProcessing(false);
+      setCurrentStep(1);
+    }
+  };
+
+  // Handle Resume Submission to proceed to optional JD step
   const handleResumeNext = async () => {
     setError(null);
     if (!resumeFile && !resumePastedText.trim()) {
@@ -73,7 +127,7 @@ function NewAnalysisContent() {
         fileToUpload = new File([blob], "resume.txt", { type: "text/plain" });
       }
 
-      if (fileToUpload) {
+      if (fileToUpload && !resumeIngestedId) {
         const res = await ingestResume(fileToUpload);
         setResumeIngestedId(res.id);
       }
@@ -118,11 +172,11 @@ function NewAnalysisContent() {
     }
   };
 
-  // Launch Full Multi-Agent Baseline Pipeline
+  // Launch Full Multi-Agent Pipeline with Job Description
   const handleLaunchPipeline = async () => {
     setError(null);
-    if (!resumeIngestedId || !jdIngestedId) {
-      setError("Resume or Job Description identifier missing. Please re-verify previous steps.");
+    if (!resumeIngestedId) {
+      setError("Resume identifier missing. Please re-verify previous steps.");
       return;
     }
 
@@ -130,7 +184,6 @@ function NewAnalysisContent() {
       setIsProcessing(true);
       setCurrentStep(4);
 
-      // Ingest optional external profiles if provided
       if (githubUrl.trim()) {
         setPipelineStep("Ingesting external GitHub evidence...");
         setPipelineProgress(15);
@@ -147,7 +200,7 @@ function NewAnalysisContent() {
 
       const baselineReport = await triggerBaselineAnalysis({
         resume_id: resumeIngestedId,
-        job_description_id: jdIngestedId,
+        job_description_id: jdIngestedId || undefined,
       });
 
       setPipelineStep("Deterministic scoring complete. Opening Analysis Workspace...");
@@ -214,11 +267,11 @@ function NewAnalysisContent() {
           <section className="rounded border border-[#e6e2d8] bg-[#ffffff] p-5 sm:p-8 shadow-editorial">
             <div className="flex items-center gap-2 text-xs font-mono text-[#5c5953] uppercase tracking-wider mb-2">
               <FileText className="h-4 w-4 text-[#181816]" />
-              Step 01 — Candidate Profile
+              Step 01 — ATS Resume Checker
             </div>
             <h1 className="font-serif text-xl sm:text-2xl font-normal text-[#181816]">Upload Candidate Resume</h1>
             <p className="mt-1 text-xs text-[#5c5953]">
-              Upload your PDF, DOCX, or TXT resume. The intake agent will extract contact blocks, work experience, projects, skills, and evidence claims.
+              Upload your resume in PDF or DOCX format. We will audit ATS readability, layout traps, section structure, action verbs, and quantifiable metrics.
             </p>
 
             <div className="mt-6 space-y-6">
@@ -234,13 +287,30 @@ function NewAnalysisContent() {
                     fileInputRef.current?.click();
                   }
                 }}
-                className="flex flex-col items-center justify-center rounded border-2 border-dashed border-[#ded9cc] bg-[#fcfbf7] p-6 sm:p-8 text-center cursor-pointer hover:border-[#181816] focus-visible:outline-2 focus-visible:outline-[#181816] transition-colors"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    setResumeFile(e.dataTransfer.files[0]);
+                  }
+                }}
+                className={`flex flex-col items-center justify-center rounded border-2 border-dashed p-6 sm:p-8 text-center cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-[#181816] ${
+                  isDragging
+                    ? "border-[#181816] bg-[#f2efe6]"
+                    : "border-[#ded9cc] bg-[#fcfbf7] hover:border-[#181816]"
+                }`}
               >
                 <Upload className="h-8 w-8 text-[#5c5953] mb-2" />
                 <span className="text-xs font-medium text-[#181816] break-all">
-                  {resumeFile ? resumeFile.name : "Click or press Enter to browse or drop resume file here"}
+                  {resumeFile ? resumeFile.name : "Click or drag & drop your resume file here"}
                 </span>
                 <span className="mt-1 text-[11px] text-[#5c5953]">Supports PDF, DOCX, TXT (up to 10MB)</span>
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -254,6 +324,32 @@ function NewAnalysisContent() {
                 />
               </div>
 
+              {/* Selected File Preview Card */}
+              {resumeFile && (
+                <div className="flex items-center justify-between rounded border border-[#cde4d3] bg-[#f0f7f2] p-4 text-xs">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-[#1f6339] shrink-0" />
+                    <div>
+                      <p className="font-medium text-[#181816] break-all">{resumeFile.name}</p>
+                      <div className="mt-0.5 flex items-center gap-2 text-[11px] text-[#5c5953]">
+                        <span>{formatFileSize(resumeFile.size)}</span>
+                        <span>•</span>
+                        <span className="text-[#1f6339] font-medium flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Ready for ATS Analysis
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setResumeFile(null)}
+                    className="text-xs text-[#5c5953] hover:text-[#942e23] transition-colors ml-2"
+                  >
+                    Change
+                  </button>
+                </div>
+              )}
+
               <div className="relative flex items-center justify-center">
                 <span className="bg-[#ffffff] px-3 font-mono text-[11px] text-[#5c5953] uppercase font-bold">Or Paste Plain Text</span>
               </div>
@@ -264,26 +360,38 @@ function NewAnalysisContent() {
                   id="resume-plain-text"
                   value={resumePastedText}
                   onChange={(e) => setResumePastedText(e.target.value)}
-                  rows={6}
+                  rows={5}
                   placeholder="Paste raw resume text here if preferred..."
                   className="w-full rounded border border-[#ded9cc] bg-[#fcfbf7] p-3 text-xs text-[#181816] focus:border-[#181816] focus:outline-none transition-colors font-mono leading-relaxed"
                 />
               </div>
 
-              <div className="flex justify-end pt-4 border-t border-[#edeae1]">
+              {/* Dual Action Buttons (Instant ATS Check vs Target Job Matching) */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-[#edeae1]">
                 <button
                   type="button"
                   onClick={handleResumeNext}
-                  disabled={isProcessing}
-                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded bg-[#181816] px-5 py-2.5 text-xs font-medium text-[#fcfbf7] hover:bg-[#2b2926] disabled:opacity-50 transition-colors shadow-sm min-h-[44px]"
+                  disabled={isProcessing || (!resumeFile && !resumePastedText.trim())}
+                  className="flex items-center justify-center gap-1.5 rounded border border-[#ded9cc] bg-[#f7f5ef] px-4 py-2.5 text-xs font-medium text-[#181816] hover:bg-[#eae6dd] disabled:opacity-50 transition-colors min-h-[44px]"
                 >
-                  {isProcessing ? "Parsing Ingestion..." : "Continue to Job Description"}
+                  <span>Match with Target Job (Optional)</span>
                   <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRunInstantAtsCheck}
+                  disabled={isProcessing || (!resumeFile && !resumePastedText.trim())}
+                  className="flex items-center justify-center gap-2 rounded bg-[#181816] px-5 py-2.5 text-xs font-bold text-[#fcfbf7] hover:bg-[#2b2926] disabled:opacity-50 transition-colors shadow-sm min-h-[44px]"
+                >
+                  <ShieldCheck className="h-4 w-4 text-[#8cd69e]" />
+                  <span>{isProcessing ? "Analyzing Resume..." : "Run Instant ATS Check"}</span>
                 </button>
               </div>
             </div>
           </section>
         )}
+
 
         {/* STEP 2: Job Description */}
         {currentStep === 2 && (

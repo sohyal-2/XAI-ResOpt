@@ -89,6 +89,11 @@ class ATSAgentOutput(BaseModel):
     parsability_score: float = Field(ge=0.0, le=1.0)
     keyword_distribution: dict[str, int] = Field(default_factory=dict)
     requirement_coverage_percent: float = Field(ge=0.0, le=100.0)
+    content_quality_score: float = Field(default=0.85, ge=0.0, le=1.0)
+    structure_score: float = Field(default=0.9, ge=0.0, le=1.0)
+    weak_verbs_found: list[str] = Field(default_factory=list)
+    quantified_bullets_ratio: float = Field(default=0.5, ge=0.0, le=1.0)
+    category_pillars: dict[str, Any] = Field(default_factory=dict)
     recommendations: list[AgentRecommendation] = Field(default_factory=list)
 
 

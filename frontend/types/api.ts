@@ -98,6 +98,14 @@ export interface BaselineReportResponse {
   ats_risks: RiskIndicator[];
   unsupported_claims: string[];
   evidence_confidence: number;
+  has_target_job?: boolean;
+  category_pillars?: Record<string, {
+    name: string;
+    score: number;
+    status: "pass" | "warn" | "fail" | string;
+    description: string;
+    issues_count: number;
+  }>;
   recommendations: RecommendationDetail[];
   evidence_references: EvidenceTraceItem[];
   requirement_coverage: RequirementTraceItem[];
@@ -105,6 +113,7 @@ export interface BaselineReportResponse {
   reasons: ScoreReason[];
   traceability_map: Record<string, string[]>;
 }
+
 
 export interface RecommendationsResponse {
   analysis_id: string;

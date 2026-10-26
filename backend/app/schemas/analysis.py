@@ -23,7 +23,7 @@ class BaselineAnalysisRequest(BaseModel):
     """Payload to trigger the complete baseline analysis workflow."""
     resume_id: UUID | None = None
     resume_version_id: UUID | None = None
-    job_description_id: UUID
+    job_description_id: UUID | None = None
     custom_weights: ScoringWeights | None = None
 
     model_config = ConfigDict(extra="forbid")
@@ -48,10 +48,12 @@ class BaselineReportResponse(BaseModel):
     owner_id: UUID
     resume_version_id: UUID
     job_description_id: UUID
+    has_target_job: bool = True
     created_at: datetime
     status: str = "completed"
     score_name: str = "XAI-ResOpt ATS Compatibility Score"
     calculation_version: str = "xai-resopt-v1.0-deterministic"
+    category_pillars: dict[str, Any] = Field(default_factory=dict)
     
     # Core score metrics
     overall_score: float = Field(ge=0.0, le=100.0)

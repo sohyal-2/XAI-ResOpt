@@ -104,7 +104,7 @@ export default function AnalysisWorkspacePage() {
     { key: "explain", label: "Explain & Gaps", icon: HelpCircle },
     { key: "rewrite", label: "Optimizer & Review", icon: Edit3 },
     { key: "comparison", label: "Before vs After", icon: GitCompare },
-    { key: "ats", label: "ATS Invariants", icon: ShieldCheck },
+    { key: "ats", label: "ATS Compatibility", icon: ShieldCheck },
     { key: "skills", label: "Skills Coverage", icon: Layers },
     { key: "history", label: "Version History", icon: History },
   ];
@@ -444,7 +444,9 @@ export default function AnalysisWorkspacePage() {
               {activeTab === "overview" && (
                 <OverviewTab report={report} onNavigateTab={handleTabChange} />
               )}
-              {activeTab === "ats" && <AtsTab report={report} />}
+              {activeTab === "ats" && (
+                <AtsTab report={report} onNavigateTab={handleTabChange} />
+              )}
               {activeTab === "skills" && (
                 <SkillsTab report={report} onNavigateTab={handleTabChange} />
               )}

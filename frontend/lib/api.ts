@@ -186,7 +186,7 @@ export async function fetchAnalysisSummary(analysisId: string, token?: string | 
 }
 
 export async function triggerBaselineAnalysis(
-  payload: { resume_id?: string; resume_version_id?: string; job_description_id: string },
+  payload: { resume_id?: string; resume_version_id?: string; job_description_id?: string },
   token?: string | null
 ): Promise<BaselineReportResponse> {
   const response = await fetch(`${apiUrl}/api/analysis/baseline`, {
@@ -195,6 +195,16 @@ export async function triggerBaselineAnalysis(
     body: JSON.stringify(payload),
   });
   return parseResponse<BaselineReportResponse>(response);
+}
+
+export async function deleteAnalysis(analysisId: string, token?: string | null): Promise<void> {
+  const response = await fetch(`${apiUrl}/api/analysis/${analysisId}`, {
+    method: "DELETE",
+    headers: getHeaders(token),
+  });
+  if (!response.ok && response.status !== 204) {
+    throw new Error(`Failed to delete analysis: ${response.status}`);
+  }
 }
 
 export async function fetchBaselineReport(analysisId: string, token?: string | null): Promise<BaselineReportResponse> {

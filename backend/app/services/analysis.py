@@ -102,19 +102,46 @@ async def _resolve_resume_version(
 async def _resolve_job_description(
     db: AsyncSession,
     owner_id: UUID,
-    job_description_id: UUID,
+    job_description_id: UUID | None,
 ) -> JobDescription:
+    if job_description_id is not None:
+        stmt = (
+            select(JobDescription)
+            .where(JobDescription.id == job_description_id, JobDescription.owner_id == owner_id)
+        )
+        job = await db.scalar(stmt)
+        if not job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Job description {job_description_id} not found or not owned by user.",
+            )
+        return job
+
+    # Standalone Resume Quality Mode: resolve or create standard benchmark
+    benchmark_title = "General ATS Resume Quality Benchmark"
     stmt = (
         select(JobDescription)
-        .where(JobDescription.id == job_description_id, JobDescription.owner_id == owner_id)
+        .where(JobDescription.owner_id == owner_id, JobDescription.title == benchmark_title)
     )
-    job = await db.scalar(stmt)
-    if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job description {job_description_id} not found or not owned by user.",
-        )
-    return job
+    existing_bench = await db.scalar(stmt)
+    if existing_bench:
+        return existing_bench
+
+    from app.parsing.job_description import parse_job_description
+    from app.services.ingestion import store_job_description
+
+    bench_text = (
+        "General ATS Resume Quality Benchmark.\n"
+        "Responsibilities: Deliver high-quality solutions, collaborate effectively across teams, and achieve measurable outcomes.\n"
+        "Requirements:\n"
+        "- Demonstrated technical and domain proficiency.\n"
+        "- Strong written, communication, and analytical abilities.\n"
+        "- Proven track record of impact and results."
+    )
+    bench_ext = parse_job_description(bench_text, "benchmark")
+    bench_ext.title = benchmark_title
+    return await store_job_description(db, owner_id, bench_ext)
+
 
 
 async def run_baseline_analysis(
@@ -442,11 +469,15 @@ async def run_baseline_analysis(
         c.claim_text for c in consolidated_output.evidence_analysis.unsupported_claims
     ]
 
+    has_target_job = (req.job_description_id is not None)
+    category_pillars = getattr(consolidated_output.ats_analysis, "category_pillars", {})
+
     return BaselineReportResponse(
         analysis_id=analysis_id,
         owner_id=owner_id,
         resume_version_id=resume_version.id,
         job_description_id=job_desc.id,
+        has_target_job=has_target_job,
         created_at=analysis_record.created_at,
         status="completed",
         score_name=scoring_result.score_name,
@@ -456,6 +487,7 @@ async def run_baseline_analysis(
         raw_weighted_score=scoring_result.raw_weighted_score,
         total_penalty=scoring_result.total_penalty,
         category_scores=scoring_result.category_scores,
+        category_pillars=category_pillars,
         strengths=strengths,
         weaknesses=weaknesses,
         mandatory_skill_gaps=mandatory_gaps,
@@ -470,6 +502,7 @@ async def run_baseline_analysis(
         reasons=scoring_result.reasons,
         traceability_map=scoring_result.traceability_map,
     )
+
 
 
 # -----------------------------------------------------------------------------
@@ -489,6 +522,17 @@ async def _get_authorized_analysis(
             detail=f"Analysis {analysis_id} not found or unauthorized.",
         )
     return analysis
+
+
+async def delete_user_analysis(
+    db: AsyncSession,
+    owner_id: UUID,
+    analysis_id: UUID,
+) -> None:
+    analysis = await _get_authorized_analysis(db, owner_id, analysis_id)
+    await db.delete(analysis)
+    await db.commit()
+
 
 
 async def get_baseline_report(
@@ -546,11 +590,19 @@ async def get_baseline_report(
         if p.penalty_name == "unsupported_claims_penalty":
             unsupported_claims.extend(p.offending_items)
 
+    ats_run_stmt = select(AgentRun).where(
+        AgentRun.analysis_id == analysis.id, AgentRun.agent_name == "ats_agent"
+    )
+    ats_run = await db.scalar(ats_run_stmt)
+    category_pillars = (ats_run.output or {}).get("category_pillars", {}) if ats_run else {}
+    has_target_job = "job_match" in category_pillars
+
     return BaselineReportResponse(
         analysis_id=analysis.id,
         owner_id=analysis.owner_id,
         resume_version_id=analysis.resume_version_id,
         job_description_id=analysis.job_description_id,
+        has_target_job=has_target_job,
         created_at=analysis.created_at,
         status=analysis.status.value,
         score_name=scoring_result.score_name,
@@ -560,6 +612,7 @@ async def get_baseline_report(
         raw_weighted_score=scoring_result.raw_weighted_score,
         total_penalty=scoring_result.total_penalty,
         category_scores=scoring_result.category_scores,
+        category_pillars=category_pillars,
         strengths=strengths,
         weaknesses=weaknesses,
         mandatory_skill_gaps=missing_mandatory,
@@ -576,6 +629,7 @@ async def get_baseline_report(
         reasons=scoring_result.reasons,
         traceability_map=scoring_result.traceability_map,
     )
+
 
 
 async def get_score_breakdown(
