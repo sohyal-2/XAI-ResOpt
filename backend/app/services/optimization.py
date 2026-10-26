@@ -272,6 +272,8 @@ async def run_closed_loop_optimization(
         rejected_changes: list[ProposedChange] = []
 
         for change in opt_output.proposed_changes:
+            if change.after_text.strip() == change.before_text.strip():
+                continue
             if change.change_id in approved_change_ids and change.change_id in passed_change_ids:
                 accepted_changes.append(change)
             else:

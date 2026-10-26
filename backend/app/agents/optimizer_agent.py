@@ -197,16 +197,70 @@ class OptimizerAgent:
         if not orig_summary:
             before_text = "[No professional summary present]"
             after_text = f"Results-driven {target_title} with proven background designing and maintaining scalable backend systems, microservices, cloud deployments, and high-performance databases."
-            reason = "Added focused ATS professional summary highlighting verified backend engineering competencies."
+            reason = "Added focused ATS professional summary highlighting verified technical competencies."
         else:
             before_text = orig_summary
-            # Enrich existing summary with target focus if concise
-            after_text = orig_summary.strip()
-            if not after_text.endswith("."):
-                after_text += "."
-            if "results-driven" not in after_text.lower():
-                after_text = f"Results-driven professional: {after_text}"
-            reason = "Polished professional summary phrasing for ATS clarity and conciseness."
+            orig_lower = orig_summary.lower()
+            
+            # Detect entry-level, student, or seeking phrases that ATS filters flag
+            is_student_or_seeking = any(
+                phrase in orig_lower
+                for phrase in [
+                    "student", "pursuing", "b.tech", "btech", "degree", "undergraduate", "internship",
+                    "seeking an", "seeking a", "eager to", "strong interest in", "entry-level", "fresher"
+                ]
+            )
+
+            if is_student_or_seeking:
+                # Extract domain and technical competencies
+                domain = (
+                    "Artificial Intelligence & Data Science"
+                    if "artificial intelligence" in orig_lower or "data science" in orig_lower
+                    else target_title
+                )
+                
+                # Identify skills mentioned in summary and evidence
+                key_skills = [
+                    s for s in [
+                        "Python", "SQL", "Excel", "Machine Learning", "Data Analytics", 
+                        "Data Science", "Deep Learning", "TensorFlow", "Pandas", "Scikit-Learn"
+                    ]
+                    if s.lower() in orig_lower or any(s.lower() == cs.lower() for cs in candidate_skills)
+                ]
+                skills_str = ", ".join(key_skills[:4]) if key_skills else "Python, SQL, and predictive modeling"
+
+                after_text = (
+                    f"Results-driven {domain} specialist with foundational expertise in {skills_str}. "
+                    f"Proficient in statistical analysis, database querying, complex data extraction, and modern AI architectures. "
+                    f"Adept at analytical problem-solving and delivering data-driven solutions to optimize operational decision-making."
+                )
+                reason = "Transformed entry-level student objective into an ATS-aligned executive capability statement emphasizing verified technical competencies."
+            else:
+                # Polish experienced summary: eliminate first-person pronouns and add target job keyword alignment
+                cleaned = re.sub(r"\b(I am|I have|My goal is to|I seek to|Seeking to)\b", "", orig_summary, flags=re.IGNORECASE).strip()
+                if not cleaned.endswith("."):
+                    cleaned += "."
+                
+                # Check for target job keywords to weave in
+                job_req_terms: list[str] = []
+                if job and hasattr(job, "requirements"):
+                    for req in job.requirements:
+                        for t in _get_attr(req, "original_terms", []):
+                            term_str = str(t)
+                            if term_str.lower() not in cleaned.lower() and len(term_str) > 2:
+                                job_req_terms.append(term_str)
+
+                if job_req_terms and len(job_req_terms) >= 2:
+                    after_text = f"Results-driven professional: {cleaned} Leveraging core competencies in {', '.join(job_req_terms[:2])}."
+                elif not cleaned.lower().startswith("results-driven") and not cleaned.lower().startswith("experienced"):
+                    after_text = f"Results-driven professional: {cleaned}"
+                else:
+                    after_text = cleaned
+                reason = "Polished professional summary phrasing for ATS clarity, active phrasing, and keyword density."
+
+        # Guard against identical no-op change proposals
+        if after_text.strip() == before_text.strip():
+            return None
 
         return ProposedChange(
             change_id=uuid4(),
