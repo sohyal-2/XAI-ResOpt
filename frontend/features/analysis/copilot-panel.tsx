@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { sendCopilotQuery } from "@/lib/api";
+import { useAuth } from "@/features/auth/auth-provider";
 import type { CopilotChatResponse, CopilotCitation } from "@/types/api";
 import {
   Sparkles,
@@ -34,6 +35,7 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({
   onNavigateTab,
   onClose,
 }) => {
+  const { token } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "initial-greeting",
@@ -69,7 +71,7 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({
     setIsLoading(true);
 
     try {
-      const resp: CopilotChatResponse = await sendCopilotQuery(analysisId, q);
+      const resp: CopilotChatResponse = await sendCopilotQuery(analysisId, q, token);
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: "assistant",

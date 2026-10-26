@@ -101,14 +101,12 @@ export default function AnalysisWorkspacePage() {
 
   const navTabs = [
     { key: "overview", label: "Overview", icon: LayoutDashboard },
-    { key: "ats", label: "ATS", icon: ShieldCheck },
-    { key: "skills", label: "Skills", icon: Layers },
-    { key: "evidence", label: "Evidence", icon: Layers },
-    { key: "explain", label: "Explain", icon: HelpCircle },
-    { key: "rewrite", label: "Rewrite", icon: Edit3 },
-    { key: "comparison", label: "Comparison", icon: GitCompare },
-    { key: "agents", label: "Agents", icon: Cpu },
-    { key: "history", label: "History", icon: History },
+    { key: "explain", label: "Explain & Gaps", icon: HelpCircle },
+    { key: "rewrite", label: "Optimizer & Review", icon: Edit3 },
+    { key: "comparison", label: "Before vs After", icon: GitCompare },
+    { key: "ats", label: "ATS Invariants", icon: ShieldCheck },
+    { key: "skills", label: "Skills Coverage", icon: Layers },
+    { key: "history", label: "Version History", icon: History },
   ];
 
   if (isLoading && !report) {
@@ -184,16 +182,14 @@ export default function AnalysisWorkspacePage() {
               </div>
 
               {/* Export Button */}
-              {summary?.resume_version_id && (
-                <Link
-                  href={`/resumes/export?versionId=${summary.resume_version_id}`}
-                  className="flex items-center justify-center gap-1.5 rounded bg-[#181816] px-3 py-1.5 text-xs font-medium text-[#fcfbf7] hover:bg-[#2b2926] transition-colors shadow-sm min-h-[38px]"
-                  title="Export Resume"
-                >
-                  <FileDown className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">Export</span>
-                </Link>
-              )}
+              <Link
+                href={`/resumes/export?versionId=${summary?.resume_version_id || report.resume_version_id}`}
+                className="flex items-center justify-center gap-1.5 rounded bg-[#181816] px-3 py-1.5 text-xs font-medium text-[#fcfbf7] hover:bg-[#2b2926] transition-colors shadow-sm min-h-[38px]"
+                title="Export Resume"
+              >
+                <FileDown className="h-3.5 w-3.5" />
+                <span className="hidden md:inline">Export Resume</span>
+              </Link>
 
               {/* Mobile Copilot Trigger Button */}
               <button
@@ -453,7 +449,9 @@ export default function AnalysisWorkspacePage() {
                 <SkillsTab report={report} onNavigateTab={handleTabChange} />
               )}
               {activeTab === "evidence" && <EvidenceTab report={report} />}
-              {activeTab === "explain" && <ExplainTab report={report} />}
+              {activeTab === "explain" && (
+                <ExplainTab report={report} onNavigateTab={handleTabChange} />
+              )}
               {activeTab === "rewrite" && (
                 <RewriteTab analysisId={analysisId} onNavigateTab={handleTabChange} />
               )}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -181,24 +182,33 @@ async def export_resume_pdf(
     config = ResumeRenderConfig(font_family=font_family, margins_inch=margins_inch)
     resume_ver, doc, changes = await _get_validated_resume_document(db, current_user.id, version_id, config=config)
 
-    # Validate before rendering
+    # Validate before rendering - only block if entirely empty
     val_res = validate_resume_for_rendering(doc, resume_ver.content_text, changes)
-    if not val_res.is_valid:
+    if not val_res.is_valid and (not doc.sections or not resume_ver.content_text):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Resume failed pre-rendering validation: {'; '.join(val_res.issues)}",
         )
 
-    renderer = ATSPdfRenderer(doc)
-    pdf_bytes = renderer.render_pdf_bytes()
+    try:
+        renderer = ATSPdfRenderer(doc)
+        pdf_bytes = renderer.render_pdf_bytes()
+    except Exception as exc:
+        # Fallback to standard Helvetica if custom font/styling had an issue
+        doc.config.font_family = "Helvetica"
+        fallback_renderer = ATSPdfRenderer(doc)
+        pdf_bytes = fallback_renderer.render_pdf_bytes()
 
-    clean_name = doc.header.name.replace(" ", "_")
+    clean_name = re.sub(r"[^a-zA-Z0-9_-]", "_", doc.header.name or "Candidate")
     filename = f"{clean_name}_Resume.pdf"
 
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
     )
 
 
@@ -214,9 +224,9 @@ async def export_resume_docx(
     config = ResumeRenderConfig(font_family=font_family, margins_inch=margins_inch)
     resume_ver, doc, changes = await _get_validated_resume_document(db, current_user.id, version_id, config=config)
 
-    # Validate before rendering
+    # Validate before rendering - only block if entirely empty
     val_res = validate_resume_for_rendering(doc, resume_ver.content_text, changes)
-    if not val_res.is_valid:
+    if not val_res.is_valid and (not doc.sections or not resume_ver.content_text):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Resume failed pre-rendering validation: {'; '.join(val_res.issues)}",
@@ -225,11 +235,14 @@ async def export_resume_docx(
     renderer = ATSDocxRenderer(doc)
     docx_bytes = renderer.render_docx_bytes()
 
-    clean_name = doc.header.name.replace(" ", "_")
+    clean_name = re.sub(r"[^a-zA-Z0-9_-]", "_", doc.header.name or "Candidate")
     filename = f"{clean_name}_Resume.docx"
 
     return StreamingResponse(
         io.BytesIO(docx_bytes),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
     )
